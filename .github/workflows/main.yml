@@ -1,0 +1,50 @@
+name: Crear APK CONTROL DEL HOGAR
+
+on:
+workflow_dispatch:
+push:
+paths:
+- 'ControlHogarAndroid_PAQUETE_GITHUB.zip'
+- '.github/workflows/main.yml'
+
+jobs:
+construir:
+runs-on: ubuntu-latest
+
+steps:
+  - name: Descargar proyecto
+    uses: actions/checkout@v4
+
+  - name: Preparar Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
+
+  - name: Preparar Android
+    run: |
+      yes | "$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)" --licenses || true
+
+  - name: Descomprimir proyecto
+    run: |
+      unzip -o ControlHogarAndroid_PAQUETE_GITHUB.zip -d proyecto
+      find proyecto -name settings.gradle -print
+
+  - name: Instalar Gradle
+    uses: gradle/actions/setup-gradle@v4
+    with:
+      gradle-version: '8.9'
+
+  - name: Compilar APK
+    run: |
+      SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+      "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      cd "$(dirname "$(find proyecto -name settings.gradle | head -n 1)")"
+      gradle assembleDebug
+
+  - name: Guardar APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: CONTROL-DEL-HOGAR-APK
+      path: proyecto/**/build/outputs/apk/debug/*.apk
+      if-no-files-found: error
