@@ -1,0 +1,57 @@
+
+name: Crear APK CONTROL DEL HOGAR
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ControlHogarAndroid_PAQUETE_GITHUB.zip'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Descomprimir proyecto
+        run: |
+          mkdir proyecto
+          unzip -o ControlHogarAndroid_PAQUETE_GITHUB.zip -d proyecto
+          find proyecto -name settings.gradle -print
+
+      - name: Preparar Android SDK
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Compilar APK
+        run: |
+          SETTINGS="$(find proyecto -name settings.gradle -type f | head -n 1)"
+          if [ -z "$SETTINGS" ]; then
+            echo "No se encontró settings.gradle dentro del ZIP."
+            exit 1
+          fi
+          cd "$(dirname "$SETTINGS")"
+          gradle assembleDebug
+
+      - name: Guardar APK para descargar
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONTROL-DEL-HOGAR-APK
+          path: proyecto/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
